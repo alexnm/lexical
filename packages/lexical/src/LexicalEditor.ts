@@ -163,7 +163,7 @@ export type MutationListener = (
 
 export type CommandListener<P> = (payload: P, editor: LexicalEditor) => boolean;
 
-export type ReadOnlyListener = (readOnly: boolean) => void;
+export type EditableListener = (editable: boolean) => void;
 
 export type CommandListenerPriority = 0 | 1 | 2 | 3 | 4;
 
@@ -205,7 +205,7 @@ type Commands = Map<
 type Listeners = {
   decorator: Set<DecoratorListener>;
   mutation: MutationListeners;
-  readonly: Set<ReadOnlyListener>;
+  editable: Set<EditableListener>;
   root: Set<RootListener>;
   textcontent: Set<TextContentListener>;
   update: Set<UpdateListener>;
@@ -213,7 +213,7 @@ type Listeners = {
 
 export type Listener =
   | DecoratorListener
-  | ReadOnlyListener
+  | EditableListener
   | MutationListener
   | RootListener
   | TextContentListener
@@ -225,7 +225,7 @@ export type ListenerType =
   | 'decorator'
   | 'textcontent'
   | 'mutation'
-  | 'readonly';
+  | 'editable';
 
 export type TransformerType = 'text' | 'decorator' | 'element' | 'root';
 
@@ -315,7 +315,7 @@ export function createEditor(editorConfig?: {
   nodes?: ReadonlyArray<Klass<LexicalNode>>;
   onError?: ErrorHandler;
   parentEditor?: LexicalEditor;
-  readOnly?: boolean;
+  editable?: boolean;
   theme?: EditorThemeClasses;
 }): LexicalEditor {
   const config = editorConfig || {};
@@ -337,7 +337,7 @@ export function createEditor(editorConfig?: {
     ...(config.nodes || []),
   ];
   const onError = config.onError;
-  const isReadOnly = config.readOnly || false;
+  const isEditable = config.editable || true;
   let registeredNodes;
 
   if (editorConfig === undefined && activeEditor !== null) {
@@ -412,7 +412,7 @@ export function createEditor(editorConfig?: {
     },
     onError ? onError : console.error,
     initializeConversionCache(registeredNodes),
-    isReadOnly,
+    isEditable,
   );
 
   if (initialEditorState !== undefined) {
@@ -449,7 +449,7 @@ export class LexicalEditor {
   _key: string;
   _onError: ErrorHandler;
   _htmlConversions: DOMConversionCache;
-  _readOnly: boolean;
+  _editable: boolean;
 
   constructor(
     editorState: EditorState,
@@ -458,7 +458,7 @@ export class LexicalEditor {
     config: EditorConfig,
     onError: ErrorHandler,
     htmlConversions: DOMConversionCache,
-    readOnly: boolean,
+    editable: boolean,
   ) {
     this._parentEditor = parentEditor;
     // The root element associated with this editor
@@ -477,8 +477,8 @@ export class LexicalEditor {
     // Listeners
     this._listeners = {
       decorator: new Set(),
+      editable: new Set(),
       mutation: new Map(),
-      readonly: new Set(),
       root: new Set(),
       textcontent: new Set(),
       update: new Set(),
@@ -506,7 +506,7 @@ export class LexicalEditor {
 
     this._onError = onError;
     this._htmlConversions = htmlConversions;
-    this._readOnly = false;
+    this._editable = true;
     this._headless = false;
   }
 
@@ -522,8 +522,8 @@ export class LexicalEditor {
     };
   }
 
-  registerReadOnlyListener(listener: ReadOnlyListener): () => void {
-    const listenerSetOrMap = this._listeners.readonly;
+  registerEditableListener(listener: EditableListener): () => void {
+    const listenerSetOrMap = this._listeners.editable;
     listenerSetOrMap.add(listener);
     return () => {
       listenerSetOrMap.delete(listener);
@@ -827,14 +827,14 @@ export class LexicalEditor {
     }
   }
 
-  isReadOnly(): boolean {
-    return this._readOnly;
+  isEditable(): boolean {
+    return this._editable;
   }
 
-  setReadOnly(readOnly: boolean): void {
-    if (this._readOnly !== readOnly) {
-      this._readOnly = readOnly;
-      triggerListeners('readonly', this, true, readOnly);
+  setEditable(editable: boolean): void {
+    if (this._editable !== editable) {
+      this._editable = editable;
+      triggerListeners('editable', this, true, editable);
     }
   }
 
